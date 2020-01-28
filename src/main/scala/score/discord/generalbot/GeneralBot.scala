@@ -20,6 +20,7 @@ import slick.jdbc.JdbcProfile
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import CacheCoordinator._
+import score.discord.generalbot.functionality.pagination.PaginatedMessages
 import score.discord.generalbot.functionality.voicekick.VoiceKick
 
 object GeneralBot extends App {
@@ -44,6 +45,7 @@ class GeneralBot {
         implicit val messageOwnership = new MessageOwnership(new UserByMessage(dbConfig, "message_ownership") withCache LruCache.empty(20000))
         implicit val messageCache = new MessageCache
         implicit val replyCache = new ReplyCache
+        implicit val paginatedMessages = new PaginatedMessages
         val userCreatedChannels = new UserByVoiceChannel(dbConfig, "user_created_channels") withCache LruCache.empty(2000)
 
         bot.setToken(config.token)
@@ -61,7 +63,8 @@ class GeneralBot {
           new Spoilers(new StringByMessage(dbConfig, "spoilers_by_message") withCache LruCache.empty(100), commands, conversations),
           new quoteCommand.GreentextListener,
           voiceKick,
-          messageCache)
+          messageCache,
+          paginatedMessages)
 
         val helpCommand = new HelpCommand(commands)
         voiceKick.registerCommands(commands)
@@ -75,6 +78,7 @@ class GeneralBot {
         commands register new GameStatsCommand
         commands register new FindCommand
         commands register quoteCommand
+        commands register new PaginationTestCommand
         val readCommand = new ReadCommand(messageCache)
         if (readCommand.available) commands register readCommand
         commands register new PingCommand
