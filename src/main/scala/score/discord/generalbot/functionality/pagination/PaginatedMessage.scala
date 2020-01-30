@@ -10,9 +10,8 @@ import scala.util.chaining._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object PaginatedMessage {
-  def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
-            linesPerPage: Int, startingPage: Int)(implicit paginatedMessages: PaginatedMessages): Future[PaginatedMessage] = {
-    val paginatedStrings = new PaginatedStrings(data, linesPerPage, startingPage)
+  def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, paginatedStrings: PaginatedStrings)
+           (implicit paginatedMessages: PaginatedMessages): Future[PaginatedMessage] = {
     val embedBuilder = new EmbedBuilder()
     addExtraMessageElements(embedBuilder)
     embedBuilder.setDescription(paginatedStrings.getCurrentPage)
@@ -20,6 +19,11 @@ object PaginatedMessage {
     val paginatedFuture = messageFuture.map(new PaginatedMessage(_, addExtraMessageElements, paginatedStrings))
     paginatedMessages(paginatedFuture)
     paginatedFuture
+  }
+
+  def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
+            linesPerPage: Int, startingPage: Int)(implicit paginatedMessages: PaginatedMessages): Future[PaginatedMessage] = {
+    apply(channel, addExtraMessageElements, new PaginatedStrings(data, linesPerPage, startingPage))
   }
 
   def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
@@ -42,6 +46,10 @@ class PaginatedMessage(val message: Message, addExtraMessageElements: EmbedBuild
   def prev(): Unit = {
     paginatedString.prev()
     updateMessage()
+  }
+
+  def setPage(page: Int): Boolean = {
+    paginatedString.setPage(page)
   }
 
   private def makeMessageContent() = {

@@ -48,6 +48,8 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
     }
   }
 
+  def get(id: Long): Option[Future[PaginatedMessage]] = messages.get(id)
+
   private def removeOldMessage(paginatedMessageFuture: Future[PaginatedMessage]): Unit = {
     for (paginatedMessage <- paginatedMessageFuture) {
       paginatedMessage.message.clearReactions().queue()

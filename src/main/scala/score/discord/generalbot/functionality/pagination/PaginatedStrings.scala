@@ -22,6 +22,14 @@ class PaginatedStrings(data: IndexedSeq[String], linesPerPage: Int, startingPage
     }
   }
 
+  def setPage(page: Int): Boolean = {
+    if (page >= 0 && page <=maxPages) {
+      currentPage=page
+      return true
+    }
+    false
+  }
+
   def getContentForPage(page: Int): String = {
     data.slice(page * linesPerPage, (page + 1) * linesPerPage).mkString("\n")
   }
