@@ -1,7 +1,7 @@
 package score.discord.generalbot.functionality.pagination
 
 import net.dv8tion.jda.api.EmbedBuilder
-import net.dv8tion.jda.api.entities.{Message, MessageChannel}
+import net.dv8tion.jda.api.entities.{Message, MessageChannel, User}
 import score.discord.generalbot.util.APIHelper
 import score.discord.generalbot.wrappers.jda.{ID, RichRestAction}
 import score.discord.generalbot.wrappers.jda.Conversions._
@@ -14,35 +14,35 @@ object PaginatedMessage {
   /**
     * Create a new PaginatedMessage. This message will automatically be added to the registry.
     *
-    * @param channel                 The channel the PaginatedMessage will be sent in.
+    * @param originalMessage         The message this PaginatedMessage originated from.
     * @param addExtraMessageElements A function that will set desired values of an EmbedBuilder.
     * @param paginatedStrings        The PaginatedStrings object holding the desired data to be displayed.
     * @param paginatedMessages       The registry of PaginatedMessages
     * @return a Future of the PaginatedMessage to be created.
     */
-  def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, paginatedStrings: PaginatedStrings)
+  def apply(originalMessage: Message, addExtraMessageElements: EmbedBuilder => Unit, paginatedStrings: PaginatedStrings)
            (implicit paginatedMessages: PaginatedMessages): Future[PaginatedMessage] = {
     val embedBuilder = new EmbedBuilder()
     addExtraMessageElements(embedBuilder)
     embedBuilder.setDescription(paginatedStrings.getCurrentPage)
-    val messageFuture = new RichRestAction(channel.sendMessage(embedBuilder.build())).queueFuture()
-    val paginatedFuture = messageFuture.map(new PaginatedMessage(_, addExtraMessageElements, paginatedStrings))
+    val messageFuture = new RichRestAction(originalMessage.getChannel.sendMessage(embedBuilder.build())).queueFuture()
+    val paginatedFuture = messageFuture.map(new PaginatedMessage(_, originalMessage.getAuthor, addExtraMessageElements, paginatedStrings))
     paginatedMessages(paginatedFuture)
     paginatedFuture
   }
 
-  def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
+  def apply(originalMessage: Message, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
             linesPerPage: Int, startingPage: Int)(implicit paginatedMessages: PaginatedMessages): Future[PaginatedMessage] = {
-    apply(channel, addExtraMessageElements, new PaginatedStrings(data, linesPerPage, startingPage))
+    apply(originalMessage, addExtraMessageElements, new PaginatedStrings(data, linesPerPage, startingPage))
   }
 
-  def apply(channel: MessageChannel, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
+  def apply(originalMessage: Message, addExtraMessageElements: EmbedBuilder => Unit, data: IndexedSeq[String],
             linesPerPage: Int)(implicit paginatedMessages: PaginatedMessages): Future[PaginatedMessage] = {
-    apply(channel, addExtraMessageElements, data, linesPerPage, 0)
+    apply(originalMessage, addExtraMessageElements, data, linesPerPage, 0)
   }
 }
 
-class PaginatedMessage(val message: Message, addExtraMessageElements: EmbedBuilder => Unit,
+class PaginatedMessage(val message: Message, val sourceUser: User, addExtraMessageElements: EmbedBuilder => Unit,
                        paginatedString: PaginatedStrings) {
 
   message.addReaction("⬅").queue()

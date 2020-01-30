@@ -5,9 +5,7 @@ import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent
 import net.dv8tion.jda.api.hooks.EventListener
 import score.discord.generalbot.functionality.ownership.MessageOwnership
 import score.discord.generalbot.util.APIHelper
-import score.discord.generalbot.util.CommandHelper.Message
 import score.discord.generalbot.wrappers.Scheduler
-import score.discord.generalbot.wrappers.jda.ID
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -25,15 +23,17 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
     event match {
       case e: GenericMessageReactionEvent =>
         val messageOption = get(e.getMessageIdLong)
-        messageOption match { //TODO anybody can use the reactions, should only be the message owner
+        messageOption match {
           case Some(messageFuture) =>
             for (paginatedMessage <- messageFuture) {
-              e.getReactionEmote.getEmoji match {
-                case "➡" =>
-                  paginatedMessage.next()
-                case "⬅" =>
-                  paginatedMessage.prev()
-                case _ =>
+              if (paginatedMessage.sourceUser == e.getUser) {
+                e.getReactionEmote.getEmoji match {
+                  case "➡" =>
+                    paginatedMessage.next()
+                  case "⬅" =>
+                    paginatedMessage.prev()
+                  case _ =>
+                }
               }
             }
           case None => //do nothing, because this message isn't paginated
@@ -44,6 +44,7 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
 
   /**
     * Adds a Future[PaginatedMessage] into the registry of active paginated messages.
+    *
     * @param paginatedMessageFuture The paginated message to be added.
     */
   def apply(paginatedMessageFuture: Future[PaginatedMessage]): Unit = {
@@ -59,6 +60,7 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
 
   /**
     * Get a paginated message from the ID of the message it represents.
+    *
     * @param id The ID of the message
     * @return The paginated message Option
     */
@@ -68,7 +70,7 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
     for (paginatedMessage <- paginatedMessageFuture) {
       APIHelper.tryRequest(
         paginatedMessage.message.clearReactions(),
-        onFail=APIHelper.loudFailure("removing paginated message reactions", paginatedMessage.message.getChannel)
+        onFail = APIHelper.loudFailure("removing paginated message reactions", paginatedMessage.message.getChannel)
       )
       messages.remove(paginatedMessage.message.getIdLong)
     }

@@ -13,7 +13,7 @@ class PaginationTestCommand(implicit paginatedMessages: PaginatedMessages) exten
 
   override def execute(message: Message, args: String): Unit = {
     val data = Vector("1","2","3","4","a","b","c","d","x","y","z")
-    PaginatedMessage(message.getChannel, a, data, 4)
+    PaginatedMessage(message, a, data, 4)
   }
 
   def a(eb: EmbedBuilder): Unit = {

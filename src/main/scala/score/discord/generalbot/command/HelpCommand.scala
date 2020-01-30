@@ -34,7 +34,7 @@ class HelpCommand(commands: Commands)(implicit val messageOwnership: MessageOwne
         val cmdIndex = validCommands.indexOf(command)
         val rawData = validCommands.map(createExpandedHelpInfo).toVector
         val paginatedStrings = new PaginatedStrings(rawData, 1, cmdIndex)
-        PaginatedMessage(message.getChannel, addExtraEmbedInfo, paginatedStrings)
+        PaginatedMessage(message, addExtraEmbedInfo, paginatedStrings)
       case None =>
         //can't find
     }
@@ -44,7 +44,7 @@ class HelpCommand(commands: Commands)(implicit val messageOwnership: MessageOwne
   private def showHelpPage(message: Message, page: Int): Unit = {
     val myCommands = commands.all.filter(_ checkPermission message)
     val paginatedStrings = new PaginatedStrings(myCommands.map(createCommandPreviewString).toVector, pageSize, page - 1)
-    PaginatedMessage(message.getChannel, addExtraEmbedInfo, paginatedStrings)
+    PaginatedMessage(message, addExtraEmbedInfo, paginatedStrings)
   }
 
   private def createCommandPreviewString(command: Command): String = {
