@@ -4,7 +4,10 @@ import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent
 import net.dv8tion.jda.api.hooks.EventListener
 import score.discord.generalbot.functionality.ownership.MessageOwnership
+import score.discord.generalbot.util.APIHelper
+import score.discord.generalbot.util.CommandHelper.Message
 import score.discord.generalbot.wrappers.Scheduler
+import score.discord.generalbot.wrappers.jda.ID
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -21,7 +24,7 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
   override def onEvent(event: GenericEvent): Unit = {
     event match {
       case e: GenericMessageReactionEvent =>
-        val messageOption = messages.get(e.getMessageIdLong)
+        val messageOption = get(e.getMessageIdLong)
         messageOption match { //TODO anybody can use the reactions, should only be the message owner
           case Some(messageFuture) =>
             for (paginatedMessage <- messageFuture) {
@@ -39,20 +42,34 @@ class PaginatedMessages(implicit scheduler: Scheduler, ownership: MessageOwnersh
     }
   }
 
+  /**
+    * Adds a Future[PaginatedMessage] into the registry of active paginated messages.
+    * @param paginatedMessageFuture The paginated message to be added.
+    */
   def apply(paginatedMessageFuture: Future[PaginatedMessage]): Unit = {
-    for (paginatedMessage <- paginatedMessageFuture) {
-      messages.put(paginatedMessage.message.getIdLong, paginatedMessageFuture)
-    }
-    scheduler.schedule(60 seconds) {
-      removeOldMessage(paginatedMessageFuture)
-    }
+    paginatedMessageFuture.map({
+      m =>
+        messages.put(m.message.getIdLong, paginatedMessageFuture)
+
+        scheduler.schedule(60 seconds) {
+          removeOldMessage(paginatedMessageFuture)
+        }
+    })
   }
 
+  /**
+    * Get a paginated message from the ID of the message it represents.
+    * @param id The ID of the message
+    * @return The paginated message Option
+    */
   def get(id: Long): Option[Future[PaginatedMessage]] = messages.get(id)
 
   private def removeOldMessage(paginatedMessageFuture: Future[PaginatedMessage]): Unit = {
     for (paginatedMessage <- paginatedMessageFuture) {
-      paginatedMessage.message.clearReactions().queue()
+      APIHelper.tryRequest(
+        paginatedMessage.message.clearReactions(),
+        onFail=APIHelper.loudFailure("removing paginated message reactions", paginatedMessage.message.getChannel)
+      )
       messages.remove(paginatedMessage.message.getIdLong)
     }
   }
